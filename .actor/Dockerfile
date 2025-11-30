@@ -1,10 +1,11 @@
-# Use the official Apify Node.js image (Debian based for Python compatibility)
-FROM apify/actor-node:20
+# We use the official Node.js 20 (Bookworm/Debian) image.
+# This guarantees 'apt-get' exists and Python wheels (binaries) work correctly.
+FROM node:20-bookworm
 
-# Switch to root to install system dependencies
+# Check current user (Standard Node image defaults to root, but let's be safe)
 USER root
 
-# Install Python 3, Pip, and system dependencies for image processing
+# 1. Install Python 3, Pip, and system dependencies for AI (OpenMP/libgomp)
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
@@ -12,28 +13,29 @@ RUN apt-get update && apt-get install -y \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Create virtual environment for Python to avoid conflict with system packages
+# 2. Create and activate a Virtual Environment for Python
+# This prevents conflicts with system-level python packages
 ENV VIRTUAL_ENV=/opt/venv
 RUN python3 -m venv $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-# Copy python requirements
+# 3. Copy Python requirements first (caching layer)
 COPY requirements.txt ./
 
-# Install Python dependencies
-# --no-cache-dir reduces image size
+# 4. Install Python dependencies
+# --no-cache-dir keeps the image smaller
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Trigger a download of the u2net model during build time 
-# so the user doesn't wait for it on the first run.
+# 5. Pre-download the U2NET model to embed it in the Docker image
+# This ensures users don't wait 10s for the download on the first run.
 RUN python3 -c "from rembg import new_session; new_session('u2net')"
 
-# Copy source code
+# 6. Copy the rest of the application code
 COPY . ./
 
-# Switch back to non-root user for security
-USER node
+# 7. Install Node.js dependencies
+RUN npm install
 
-# Start the actor
-CMD npm start
+# 8. Define the start command
+CMD [ "npm", "start" ]
