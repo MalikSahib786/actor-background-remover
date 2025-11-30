@@ -1,28 +1,32 @@
 {
-    "title": "AI Background Remover Input",
+    "title": "Pro AI Background Remover",
     "type": "object",
     "schemaVersion": 1,
     "properties": {
         "imageUrl": {
             "title": "Image URL",
             "type": "string",
-            "description": "Direct URL to the image (jpg, png, webp).",
+            "description": "Direct URL to the image.",
             "editor": "textfield"
         },
         "imageBase64": {
             "title": "Image Base64",
             "type": "string",
-            "description": "Alternative: Base64 encoded string of the image (without data:image/... prefix).",
+            "description": "Base64 encoded string.",
             "editor": "textarea"
+        },
+        "enableAlphaMatting": {
+            "title": "Enable Alpha Matting (High Precision)",
+            "type": "boolean",
+            "description": "Use this for hair, fur, or glass. Slower (~2-3s) but significantly better edges.",
+            "default": true
         },
         "outputFormat": {
             "title": "Output Format",
             "type": "string",
-            "description": "Format of the processed image.",
             "default": "png",
             "enum": ["png", "webp"],
             "editor": "select"
         }
-    },
-    "required": []
+    }
 }
