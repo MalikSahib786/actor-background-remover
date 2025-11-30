@@ -1,27 +1,43 @@
 import sys
+import os
 import argparse
-from rembg import remove, new_session
 
-def process():
-    # 1. Parse Arguments from Node.js
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--alpha_matting', action='store_true', help='Enable alpha matting for fine edges')
-    args = parser.parse_args()
+# Helper to log to stderr immediately
+def log(msg):
+    sys.stderr.write(f"DEBUG: {msg}\n")
+    sys.stderr.flush()
 
-    try:
-        # 2. Load High-Fidelity Model (ISNET)
-        # 'isnet-general-use' is significantly better at edges than u2net
+try:
+    log("Importing libraries...")
+    from rembg import remove, new_session
+    import io
+    log("Libraries imported.")
+
+    def process():
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--alpha_matting', action='store_true')
+        args = parser.parse_args()
+
+        # Check where we think the model is
+        model_home = os.environ.get('U2NET_HOME', 'Not Set')
+        log(f"U2NET_HOME is set to: {model_home}")
+
+        log("Loading Model Session (isnet-general-use)...")
+        # This is usually where it crashes if OOM
         session = new_session("isnet-general-use")
+        log("Model Loaded Successfully.")
 
-        # 3. Read Binary Input
+        log("Reading input from stdin...")
         input_data = sys.stdin.buffer.read()
+        
         if not input_data:
-            raise ValueError("No image data received.")
+            raise ValueError("No input data received.")
+        
+        log(f"Input received: {len(input_data)} bytes. Processing...")
 
-        # 4. Configure Alpha Matting Settings
-        # These settings tune the fine-edge detection
         matting_kwargs = {}
         if args.alpha_matting:
+            log("Alpha Matting ENABLED (High Quality)")
             matting_kwargs = {
                 "alpha_matting": True,
                 "alpha_matting_foreground_threshold": 240,
@@ -29,21 +45,21 @@ def process():
                 "alpha_matting_erode_size": 10
             }
 
-        # 5. Execute Removal
         result_data = remove(
             input_data,
             session=session,
-            post_process_mask=True, # Smooths binary mask edges
+            post_process_mask=True,
             **matting_kwargs
         )
 
-        # 6. Write Binary Output
+        log("Processing done. Writing output...")
         sys.stdout.buffer.write(result_data)
         sys.stdout.flush()
+        log("Done.")
 
-    except Exception as e:
-        sys.stderr.write(f"Python Error: {str(e)}")
-        sys.exit(1)
+    if __name__ == "__main__":
+        process()
 
-if __name__ == "__main__":
-    process()
+except Exception as e:
+    sys.stderr.write(f"PYTHON CRASH: {str(e)}\n")
+    sys.exit(1)
