@@ -6,27 +6,29 @@
         "imageUrl": {
             "title": "Image URL",
             "type": "string",
-            "description": "Direct URL to the image.",
+            "description": "Direct URL to the image to process.",
             "editor": "textfield"
         },
         "imageBase64": {
             "title": "Image Base64",
             "type": "string",
-            "description": "Base64 encoded string.",
+            "description": "Alternative: Base64 encoded string of the image.",
             "editor": "textarea"
         },
         "enableAlphaMatting": {
             "title": "Enable Alpha Matting (High Precision)",
             "type": "boolean",
-            "description": "Use this for hair, fur, or glass. Slower (~2-3s) but significantly better edges.",
+            "description": "Highly recommended for hair, fur, or semi-transparent objects. Takes slightly longer but produces much better edges.",
             "default": true
         },
         "outputFormat": {
             "title": "Output Format",
             "type": "string",
+            "description": "Select the file format for the processed image (png or webp).",
             "default": "png",
             "enum": ["png", "webp"],
             "editor": "select"
         }
-    }
+    },
+    "required": []
 }
