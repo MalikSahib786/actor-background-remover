@@ -2,11 +2,11 @@
     "actorSpecification": 1,
     "name": "ai-background-remover",
     "version": "1.0",
-    "dockerfile": "./.actor/Dockerfile",
-    "readme": "./README.md",
+    "dockerfile": "./Dockerfile",
+    "readme": "../README.md",
     "input": "./INPUT_SCHEMA.json",
     "environmentVariables": {
-        "U2NET_HOME": "/root/.u2net"
+        "U2NET_HOME": "/opt/u2net"
     },
     "storages": {
         "dataset": {
