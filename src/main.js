@@ -16,33 +16,45 @@ async function runPythonRemover(imageBuffer, options) {
         
         const chunks = [];
         
-        // Pipe image to Python stdin
-        pythonProcess.stdin.write(imageBuffer);
-        pythonProcess.stdin.end();
+        // --- 🚨 FIX: Handle write errors (EPIPE) on stdin ---
+        pythonProcess.stdin.on('error', (err) => {
+            // If the pipe breaks, it usually means Python died. 
+            // We ignore this specific error here because the 'close' handler 
+            // below will catch the non-zero exit code and reject the promise with a better message.
+            if (err.code === 'EPIPE') return;
+            reject(new Error(`Stdin Error: ${err.message}`));
+        });
+
+        // Write data safely
+        try {
+            pythonProcess.stdin.write(imageBuffer);
+            pythonProcess.stdin.end();
+        } catch (e) {
+            // Catch synchronous write errors
+            console.error("Failed to write to Python process:", e);
+        }
 
         pythonProcess.stdout.on('data', (chunk) => chunks.push(chunk));
 
-        // 🚨 CRITICAL FIX: Stream stderr directly to console so we see errors immediately
+        // Stream Python logs directly to console for debugging
         pythonProcess.stderr.on('data', (data) => {
-            console.error(`[Python Log]: ${data.toString()}`);
+            console.error(`[Python]: ${data.toString().trim()}`);
         });
 
-        // Handle process exit
         pythonProcess.on('close', (code, signal) => {
             if (code === 0) {
                 resolve(Buffer.concat(chunks));
             } else {
-                // Determine if it was a crash (Signal) or Error (Code)
                 const failureReason = code !== null 
                     ? `Exit Code ${code}` 
-                    : `Killed by Signal ${signal} (Likely Out of Memory)`;
+                    : `Killed by Signal ${signal} (RAM Limit Exceeded)`;
                 
-                reject(new Error(`Python processing failed: ${failureReason}`));
+                reject(new Error(`Python Worker Failed: ${failureReason}`));
             }
         });
 
         pythonProcess.on('error', (err) => {
-            reject(new Error(`Failed to spawn Python process: ${err.message}`));
+            reject(new Error(`Failed to spawn Python: ${err.message}`));
         });
     });
 }
@@ -78,7 +90,6 @@ Actor.main(async () => {
 
         console.log(`🚀 Processing (Model: ISNET, Matting: ${enableAlphaMatting})...`);
         
-        // Run AI
         const processedBuffer = await runPythonRemover(imageBuffer, { enableAlphaMatting });
 
         console.log('💾 Uploading result...');
