@@ -1,0 +1,28 @@
+{
+    "title": "AI Background Remover Input",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "imageUrl": {
+            "title": "Image URL",
+            "type": "string",
+            "description": "Direct URL to the image (jpg, png, webp).",
+            "editor": "textfield"
+        },
+        "imageBase64": {
+            "title": "Image Base64",
+            "type": "string",
+            "description": "Alternative: Base64 encoded string of the image (without data:image/... prefix).",
+            "editor": "textarea"
+        },
+        "outputFormat": {
+            "title": "Output Format",
+            "type": "string",
+            "description": "Format of the processed image.",
+            "default": "png",
+            "enum": ["png", "webp"],
+            "editor": "select"
+        }
+    },
+    "required": []
+}
