@@ -1,0 +1,15 @@
+{
+    "name": "ai-background-remover",
+    "version": "1.0.0",
+    "type": "commonjs",
+    "description": "High-performance AI background removal",
+    "dependencies": {
+        "apify": "^3.1.10",
+        "axios": "^1.6.0"
+    },
+    "scripts": {
+        "start": "node src/main.js"
+    },
+    "author": "FullStackEngineer",
+    "license": "ISC"
+}
