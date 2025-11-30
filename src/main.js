@@ -7,7 +7,6 @@ async function runPythonRemover(imageBuffer, options) {
     return new Promise((resolve, reject) => {
         const scriptPath = path.join(__dirname, 'remove_bg.py');
         
-        // Pass arguments to Python script
         const args = [scriptPath];
         if (options.enableAlphaMatting) {
             args.push('--alpha_matting');
@@ -16,33 +15,44 @@ async function runPythonRemover(imageBuffer, options) {
         const pythonProcess = spawn('python3', args);
         
         const chunks = [];
-        const errorChunks = [];
-
-        // Pipe image data (fastest method)
+        
+        // Pipe image to Python stdin
         pythonProcess.stdin.write(imageBuffer);
         pythonProcess.stdin.end();
 
         pythonProcess.stdout.on('data', (chunk) => chunks.push(chunk));
-        pythonProcess.stderr.on('data', (chunk) => errorChunks.push(chunk));
 
-        pythonProcess.on('close', (code) => {
-            if (code !== 0) {
-                const errorMsg = Buffer.concat(errorChunks).toString();
-                reject(new Error(`Python Error (Code ${code}): ${errorMsg}`));
-            } else {
+        // 🚨 CRITICAL FIX: Stream stderr directly to console so we see errors immediately
+        pythonProcess.stderr.on('data', (data) => {
+            console.error(`[Python Log]: ${data.toString()}`);
+        });
+
+        // Handle process exit
+        pythonProcess.on('close', (code, signal) => {
+            if (code === 0) {
                 resolve(Buffer.concat(chunks));
+            } else {
+                // Determine if it was a crash (Signal) or Error (Code)
+                const failureReason = code !== null 
+                    ? `Exit Code ${code}` 
+                    : `Killed by Signal ${signal} (Likely Out of Memory)`;
+                
+                reject(new Error(`Python processing failed: ${failureReason}`));
             }
+        });
+
+        pythonProcess.on('error', (err) => {
+            reject(new Error(`Failed to spawn Python process: ${err.message}`));
         });
     });
 }
 
 Actor.main(async () => {
     const input = await Actor.getInput();
-    // Default to true for quality if not provided
     const { 
         imageUrl, 
         imageBase64, 
-        outputFormat = 'png',
+        outputFormat = 'png', 
         enableAlphaMatting = true 
     } = input;
 
@@ -51,7 +61,7 @@ Actor.main(async () => {
     }
 
     try {
-        console.log('🖼️  Downloading/Decoding image...');
+        console.log('🖼️  Downloading image...');
         let imageBuffer;
         let filename;
 
@@ -64,10 +74,11 @@ Actor.main(async () => {
             filename = `upload-${Date.now()}`;
         }
         
-        filename = filename.replace(/\.[^/.]+$/, ""); // strip extension
+        filename = filename.replace(/\.[^/.]+$/, "");
 
-        console.log(`🚀 Processing with AI (Model: ISNET, Matting: ${enableAlphaMatting})...`);
+        console.log(`🚀 Processing (Model: ISNET, Matting: ${enableAlphaMatting})...`);
         
+        // Run AI
         const processedBuffer = await runPythonRemover(imageBuffer, { enableAlphaMatting });
 
         console.log('💾 Uploading result...');
@@ -79,17 +90,16 @@ Actor.main(async () => {
         const storeId = Actor.getEnv().defaultKeyValueStoreId;
         const publicUrl = `https://api.apify.com/v2/key-value-stores/${storeId}/records/${outputKey}`;
 
-        console.log(`✅ Finished: ${publicUrl}`);
+        console.log(`✅ Success: ${publicUrl}`);
         
         await Actor.pushData({
             status: "success",
-            originalInput: imageUrl || "base64",
             processedImageUrl: publicUrl,
             settings: { model: "isnet-general-use", alphaMatting: enableAlphaMatting }
         });
 
     } catch (error) {
-        console.error('❌ Failed:', error.message);
+        console.error('❌ FATAL ERROR:', error.message);
         await Actor.fail(error.message);
     }
 });
