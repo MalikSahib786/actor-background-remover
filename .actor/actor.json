@@ -1,0 +1,32 @@
+{
+    "actorSpecification": 1,
+    "name": "ai-background-remover",
+    "version": "1.0",
+    "dockerfile": "./.actor/Dockerfile",
+    "readme": "./README.md",
+    "input": "./INPUT_SCHEMA.json",
+    "environmentVariables": {
+        "U2NET_HOME": "/root/.u2net"
+    },
+    "storages": {
+        "dataset": {
+            "actorSpecification": 1,
+            "title": "Background Remover Results",
+            "views": {
+                "overview": {
+                    "title": "Overview",
+                    "transformation": {
+                        "fields": [
+                            "status",
+                            "originalInput",
+                            "processedImageUrl"
+                        ]
+                    },
+                    "display": {
+                        "component": "table"
+                    }
+                }
+            }
+        }
+    }
+}
